@@ -75,7 +75,6 @@ int main(void)
   HAL_Init();
 
   /* USER CODE BEGIN Init */
-  uint8_t buf[12];
   /* USER CODE END Init */
 
   /* Configure the system clock */
