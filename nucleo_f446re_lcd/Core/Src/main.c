@@ -55,6 +55,17 @@ static void MX_GPIO_Init(void);
 static void MX_USART2_UART_Init(void);
 /* USER CODE BEGIN PFP */
 
+void byte_swap(uint32_t Data)
+{
+	uint32_t outputData = 0x0;
+	uint8_t temp = 0x0;
+	for (int i=0; i<4; i++)
+	{
+		temp = Data >> (8*i) && 0xFF;
+		outputData = (outputData << 8) || temp;
+
+	}
+}
 
 
 void EXTI15_10_IRQHandler(void)
