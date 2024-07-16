@@ -15,12 +15,62 @@
 #define SET 			ENABLE
 #define RESET 			DISABLE
 
+/*
+* ARM Cortex Processor NVIC ISERx
+*/
+#define NVIC_ISER0      ((volatile uint32_t *) 0xE000E100U)
+#define NVIC_ISER1      ((volatile uint32_t *) 0xE000E104U)
+#define NVIC_ISER2      ((volatile uint32_t *) 0xE000E108U)
+#define NVIC_ISER3      ((volatile uint32_t *) 0xE000E10CU)
+#define NVIC_ISER4      ((volatile uint32_t *) 0xE000E110U)
+#define NVIC_ISER5      ((volatile uint32_t *) 0xE000E114U)
+#define NVIC_ISER6      ((volatile uint32_t *) 0xE000E118U)
+#define NVIC_ISER7      ((volatile uint32_t *) 0xE000E11CU)
+
+/*
+* ARM Cortex Processor NVIC ICERx
+*/
+#define NVIC_ICER0      ((volatile uint32_t *) 0xE000E180U)
+#define NVIC_ICER1      ((volatile uint32_t *) 0xE000E184U)
+#define NVIC_ICER2      ((volatile uint32_t *) 0xE000E188U)
+#define NVIC_ICER3      ((volatile uint32_t *) 0xE000E18CU)
+#define NVIC_ICER4      ((volatile uint32_t *) 0xE000E190U)
+#define NVIC_ICER5      ((volatile uint32_t *) 0xE000E194U)
+#define NVIC_ICER6      ((volatile uint32_t *) 0xE000E198U)
+#define NVIC_ICER7      ((volatile uint32_t *) 0xE000E19CU)
+
+/*
+* ARM Cortex Processor NVIC IPRx
+*/
+#define NVIC_IPR0      ((volatile uint32_t *) 0xE000E400U)
+#define NVIC_IPR1      ((volatile uint32_t *) 0xE000E404U)
+#define NVIC_IPR2      ((volatile uint32_t *) 0xE000E408U)
+#define NVIC_IPR3      ((volatile uint32_t *) 0xE000E40CU)
+#define NVIC_IPR4      ((volatile uint32_t *) 0xE000E410U)
+#define NVIC_IPR5      ((volatile uint32_t *) 0xE000E414U)
+#define NVIC_IPR6      ((volatile uint32_t *) 0xE000E418U)
+#define NVIC_IPR7      ((volatile uint32_t *) 0xE000E41CU)
+
+
+
 
 #define READ_BIT(REG, BIT)    ((REG) & (BIT))
 
 #if !defined(UNUSED)
 #define UNUSED(X) (void)X      /* To avoid gcc/g++ warnings */
 #endif /* UNUSED */
+
+/*
+ * IRQ Lines
+ */
+#define IRQ_NO_EXTI0	6
+#define IRQ_NO_EXTI1	7
+#define IRQ_NO_EXTI2	8
+#define IRQ_NO_EXTI3	9
+#define IRQ_NO_EXTI4	10
+#define IRQ_NO_EXTI9_5	23
+#define IRQ_NO_EXTI9_5	40
+
 
 /*
 Base Address of Flash and SRAM (From Reference Manual)
@@ -95,6 +145,8 @@ Base Address of Flash and SRAM (From Reference Manual)
 
 #define USART1_BASEADDR (APB2_BASEADDR + 0x1000)
 #define USART6_BASEADDR (APB2_BASEADDR + 0x1400)
+
+
 
 //----- REGISTER STRUCTURES -----
 /* GPIO Register Structure*/
@@ -199,6 +251,33 @@ typedef struct
     volatile uint32_t DCKCFGR2;  //Dedicated Clock Config Register 2
 } RCC_RegDef_t;
 
+/* EXTI Register Structure*/
+typedef struct
+{
+    volatile uint32_t IMR;        //Interrupt Mask Register
+    volatile uint32_t EMR;        //Event Mask Register
+    volatile uint32_t RTSR;       //Rising Trigger Selection Register
+    volatile uint32_t FTSR;       //Falling Trigger Selection Register
+    volatile uint32_t SWIER;      //Software Interrupt Event Register
+    volatile uint32_t PR;         //Pending Register
+} EXTI_RegDef_t;
+
+/* System Config Register Structure*/
+typedef struct
+{
+    volatile uint32_t MEMRMP;     //Memory Remap Register
+    volatile uint32_t PMC;        //Peripheral Mode Config Register
+    volatile uint32_t EXTICR[4];    //External Interrupt Config Register
+    // volatile uint32_t EXTICR2;    //External Interrupt Config Register
+    // volatile uint32_t EXTICR3;    //External Interrupt Config Register
+    // volatile uint32_t EXTICR4;    //External Interrupt Config Register
+    uint32_t		  RESERVED0[2];
+    volatile uint32_t CMPCR;      //Compensation Cell Control Register
+    uint32_t		  RESERVED1[2];
+    volatile uint32_t CFGR;       //Configuration Register
+} SYSCFG_RegDef_t;
+
+
 //----- PERIPHERAL DEFINITIONS -----
 
 /*GPIO PORTS*/
@@ -224,6 +303,12 @@ typedef struct
 #define SPI2 ((SPI_RegDef_t *) SPI2_BASEADDR)
 #define SPI3 ((SPI_RegDef_t *) SPI3_BASEADDR)
 #define SPI4 ((SPI_RegDef_t *) SPI4_BASEADDR)
+
+/*EXTI*/
+#define EXTI ((EXTI_RegDef_t *) EXTI_BASEADDR)
+
+/*SYSCFG*/
+#define SYSCFG ((SYSCFG_RegDef_t *) SYSCFG_BASEADDR)
 
 //----- Clock Enable Macros -----
 #define GPIOA_PCLK_EN()     do{	uint32_t tmpreg = 0x00U;\

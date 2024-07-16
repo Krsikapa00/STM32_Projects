@@ -31,6 +31,9 @@
 #define GPIO_MODE_OUTPUT		1
 #define GPIO_MODE_ALTFUN		2
 #define GPIO_MODE_ANALOG		3
+#define GPIO_MODE_IT_FT			4
+#define GPIO_MODE_IT_RT			5
+#define GPIO_MODE_IT_RFT		6
 
 #define GPIO_OTYPE_PUSHPULL		0
 #define GPIO_OTYPE_OPENDRAIN	1
@@ -95,6 +98,8 @@ uint8_t GPIO_ToggleOutputPin(GPIO_RegDef_t *pGPIOx, uint8_t PinNumber);
 
 void GPIO_IRQConfig(uint8_t IRQNumber, uint8_t IRQPriority, uint8_t EnorDI);
 void GPIO_IRQHandling(uint8_t PinNumber);
+
+uint32_t GPIO_EXTICFG_PORT(GPIO_RegDef_t *pGPIOx);
 
 
 

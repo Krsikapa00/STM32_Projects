@@ -13,13 +13,46 @@ void GPIO_Init(GPIO_Handle_t *pGPIOHandle)
     uint32_t temp = 0x0;
 
 
-    temp = pGPIOHandle->pGPIOx->MODER & ~(0x3 << (pGPIOHandle->GPIO_PinConfig.GPIO_PinNumber * 2));    //Reset bits for the pin being accessed
-    temp |= pGPIOHandle->GPIO_PinConfig.GPIO_PinMode << (pGPIOHandle->GPIO_PinConfig.GPIO_PinNumber * 2);
-    pGPIOHandle->pGPIOx->MODER = temp;
 
-//    temp = pGPIOHandle->GPIO_PinConfig.GPIO_PinMode << (pGPIOHandle->GPIO_PinConfig.GPIO_PinNumber * 2);
-//    pGPIOHandle->pGPIOx->MODER &= ~(0x3 << (pGPIOHandle->GPIO_PinConfig.GPIO_PinNumber * 2));
-//    pGPIOHandle->pGPIOx->MODER |= temp;
+    if (pGPIOHandle->GPIO_PinConfig.GPIO_PinMode <= GPIO_MODE_ANALOG) {
+    	temp = pGPIOHandle->pGPIOx->MODER & ~(0x3 << (pGPIOHandle->GPIO_PinConfig.GPIO_PinNumber * 2));    //Reset bits for the pin being accessed
+		temp |= pGPIOHandle->GPIO_PinConfig.GPIO_PinMode << (pGPIOHandle->GPIO_PinConfig.GPIO_PinNumber * 2);
+		pGPIOHandle->pGPIOx->MODER = temp;
+    } else {
+        // Enable Sys Config Clock
+        SYSCFG_PCLK_EN();
+
+
+        if (pGPIOHandle->GPIO_PinConfig.GPIO_PinMode == GPIO_MODE_IT_FT) {
+        	//        	Configure FTSR (Falling edge trigger selection register)
+        	EXTI->FTSR |= (1 << pGPIOHandle->GPIO_PinConfig.GPIO_PinNumber);
+        	EXTI->RTSR &= ~(1 << pGPIOHandle->GPIO_PinConfig.GPIO_PinNumber);
+        } else if (pGPIOHandle->GPIO_PinConfig.GPIO_PinMode == GPIO_MODE_IT_RT) {
+        	//        	Configure RTSR (Rising edge trigger selection register)
+        	EXTI->RTSR |= (1 << pGPIOHandle->GPIO_PinConfig.GPIO_PinNumber);
+			EXTI->FTSR &= ~(1 << pGPIOHandle->GPIO_PinConfig.GPIO_PinNumber);
+        }else if (pGPIOHandle->GPIO_PinConfig.GPIO_PinMode == GPIO_MODE_IT_RFT) {
+        	//        	Configure RTSR & FTSR (Rising/Falling edge trigger selection register)
+        	EXTI->RTSR |= (1 << pGPIOHandle->GPIO_PinConfig.GPIO_PinNumber);
+			EXTI->FTSR |= (1 << pGPIOHandle->GPIO_PinConfig.GPIO_PinNumber);
+        }
+
+        // Configure GPIO port
+        temp = GPIO_EXTICFG_PORT(pGPIOHandle->pGPIOx);
+        uint8_t EXTCR_indx = pGPIOHandle->GPIO_PinConfig.GPIO_PinNumber / 4;
+        uint8_t EXTCR_reg = pGPIOHandle->GPIO_PinConfig.GPIO_PinNumber % 4;
+        SYSCFG->EXTICR[EXTCR_indx] &= ~(0xF << EXTCR_reg);
+        SYSCFG->EXTICR[EXTCR_indx] |= (temp << EXTCR_reg);
+
+
+        // Enable EXTI Interrupt delivery
+        EXTI->IMR |= (1 << pGPIOHandle->GPIO_PinConfig.GPIO_PinNumber);
+
+
+    }
+	//    temp = pGPIOHandle->GPIO_PinConfig.GPIO_PinMode << (pGPIOHandle->GPIO_PinConfig.GPIO_PinNumber * 2);
+	//    pGPIOHandle->pGPIOx->MODER &= ~(0x3 << (pGPIOHandle->GPIO_PinConfig.GPIO_PinNumber * 2));
+	//    pGPIOHandle->pGPIOx->MODER |= temp;
 
 
 
@@ -214,14 +247,132 @@ uint8_t GPIO_ToggleOutputPin(GPIO_RegDef_t *pGPIOx, uint8_t PinNumber)
 
 
 void GPIO_IRQConfig(uint8_t IRQNumber, uint8_t IRQPriority, uint8_t EnorDI)
-{
+{   
+
+    if (EnorDI == ENABLE) 
+    {
+        if (IRQNumber <= 31)
+        {
+            *NVIC_ISER0 |= (1 << IRQNumber);
+        } else if (IRQNumber > 31 && IRQNumber <= 63)
+        {
+            *NVIC_ISER1 |= (1 << (IRQNumber % 32));
+        } else if (IRQNumber > 63 && IRQNumber <= 95)
+        {
+            *NVIC_ISER2 |= (1 << (IRQNumber % 32));
+        }
+    } else 
+    {
+        if (IRQNumber <= 31)
+        {
+            *NVIC_ICER0 |= (1 << IRQNumber);
+        } else if (IRQNumber > 31 && IRQNumber <= 63)
+        {
+            *NVIC_ICER1 |= (1 << (IRQNumber % 32));
+        } else if (IRQNumber > 63 && IRQNumber <= 95)
+        {
+            *NVIC_ICER2 |= (1 << (IRQNumber % 32));
+        }
+    }    
+    
     
 }
 
 void GPIO_IRQHandling(uint8_t PinNumber)
 {
-    
+//	Clear the EXTI PR register
+    if (EXTI->PR & (1 << PinNumber))
+    {
+    	EXTI->PR |= (1 << PinNumber);
+    }
 }
+
+void GPIO_IRQPriority_Config(uint8_t IRQNumber, uint8_t IRQPriority)
+{
+    uint32_t IRQ_PRx = IRQNumber / 4;
+    uint32_t IRQ_PR_idx = IRQNumber % 4;
+    uint32_t temp = 0x0;
+    switch (IRQ_PRx)
+    {
+    case 0:
+        temp = *NVIC_IPR0 & ~(0xFF << (IRQ_PR_idx * 8));
+        temp |= IRQPriority << (IRQ_PR_idx * 8 + 4);
+        *NVIC_IPR0 = temp;
+        break;
+    case 1:
+        temp = *NVIC_IPR1 & ~(0xFF << (IRQ_PR_idx * 8));
+        temp |= IRQPriority << (IRQ_PR_idx * 8 + 4);
+        *NVIC_IPR1 = temp;
+        break;
+    case 2:
+        temp = *NVIC_IPR2 & ~(0xFF << (IRQ_PR_idx * 8));
+        temp |= IRQPriority << (IRQ_PR_idx * 8 + 4);
+        *NVIC_IPR2 = temp;
+        break;
+    case 3:
+        temp = *NVIC_IPR3 & ~(0xFF << (IRQ_PR_idx * 8));
+        temp |= IRQPriority << (IRQ_PR_idx * 8 + 4);
+        *NVIC_IPR3 = temp;
+        break;
+    case 4:
+        temp = *NVIC_IPR4 & ~(0xFF << (IRQ_PR_idx * 8));
+        temp |= IRQPriority << (IRQ_PR_idx * 8 + 4);
+        *NVIC_IPR4 = temp;
+        break;
+    case 5:
+        temp = *NVIC_IPR5 & ~(0xFF << (IRQ_PR_idx * 8));
+        temp |= IRQPriority << (IRQ_PR_idx * 8 + 4);
+        *NVIC_IPR5 = temp;
+        break;
+    case 6:
+        temp = *NVIC_IPR6 & ~(0xFF << (IRQ_PR_idx * 8));
+        temp |= IRQPriority << (IRQ_PR_idx * 8 + 4);
+        *NVIC_IPR6 = temp;
+        break;
+    case 7:
+        temp = *NVIC_IPR7 & ~(0xFF << (IRQ_PR_idx * 8));
+        temp |= IRQPriority << (IRQ_PR_idx * 8 + 4);
+        *NVIC_IPR7 = temp;
+        break;
+    default:
+        break;
+    }
+}
+
+uint32_t GPIO_EXTICFG_PORT(GPIO_RegDef_t *pGPIOx) {
+    // Use when setting up EXTI for a GPIO pin. Assign a specific EXTI register with the specific port
+    // Example: Assigning Pin A12 would be for GPIO Port A (0x0), for EXTI 12
+    // CAN MAKE THIS A MACRO
+	uint32_t temp = 0x0;
+	if (pGPIOx == GPIOA)
+	{
+		temp = 0x0;
+	} else if (pGPIOx == GPIOB)
+	{
+		temp = 0x1;
+	} else if (pGPIOx == GPIOC)
+	{
+		temp = 0x2;
+	} else if (pGPIOx == GPIOD)
+	{
+		temp = 0x3;
+	} else if (pGPIOx == GPIOE)
+	{
+		temp = 0x4;
+	} else if (pGPIOx == GPIOF)
+	{
+		temp = 0x5;
+	} else if (pGPIOx == GPIOG)
+	{
+		temp = 0x6;
+	} else if (pGPIOx == GPIOH)
+	{
+		temp = 0x7;
+	}
+    return temp;
+}
+
+
 
 
 
